@@ -1,0 +1,6 @@
+import {env} from 'cloudflare:workers';
+import {getUser,json,sameOrigin} from '../../../supabase-auth';
+import {canManageNote} from '@/lib/note-policy';
+async function authorize(request:Request,id:string){if(!sameOrigin(request))return {error:json({error:'Invalid request origin.'},403)};const user=await getUser();if(!user)return{error:json({error:'Sign in first.'},401)};const note=await env.DB!.prepare('SELECT owner,status FROM notes WHERE id=?').bind(id).first<{owner:string;status:string}>();if(!note||!canManageNote(note,user))return{error:json({error:'Note not found.'},404)};return{user,note};}
+export async function DELETE(request:Request,{params}:{params:Promise<{id:string}>}){const{id}=await params;const result=await authorize(request,id);if(result.error)return result.error;await env.DB!.prepare('DELETE FROM notes WHERE id=? AND (owner=? OR status=\'published\')').bind(id,result.user!.id).run();return json({ok:true});}
+export async function PATCH(request:Request,{params}:{params:Promise<{id:string}>}){const{id}=await params;const result=await authorize(request,id);if(result.error)return result.error;await env.DB!.prepare('UPDATE notes SET status=\'hidden\',updated=? WHERE id=? AND (owner=? OR status=\'published\')').bind(Date.now(),id,result.user!.id).run();return json({ok:true});}
