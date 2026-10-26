@@ -18,8 +18,9 @@ if(process.argv[2]){
  assert.equal((await api('/api/notes',{method:'POST',headers:{Origin:base,'Content-Type':'application/json'},body:'{}'})).status,401);
  assert.equal((await api('/api/photos/test')).status,410);
  assert.equal((await api('/api/entries',{method:'POST'})).status,410);
- assert.equal((await api('/api/auth/otp',{method:'POST',headers:{Origin:base,'Content-Type':'application/json'},body:JSON.stringify({email:'test@example.test'})})).status,503);
- const session=await (await api('/api/auth/session')).json();assert.equal(session.user,null);assert.equal(session.configured,false);
- console.log('PASS: public-only note listing, private/admin access guards, removed uploads, and fail-closed unconfigured sign-in.');
+ assert.equal((await api('/api/auth/otp',{method:'POST',headers:{Origin:base,'Content-Type':'application/json'},body:JSON.stringify({email:'test@example.test'})})).status,410);
+ const session=await (await api('/api/auth/session')).json();assert.equal(session.user,null);
+ console.log('PASS: public-only note listing, private/admin access guards, removed uploads, and retired email-code sign-in.');
 }
+
 

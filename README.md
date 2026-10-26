@@ -9,20 +9,29 @@ A text-only place for people facing the end of life to preserve memories and lea
 - Admins can hide or delete published notes. They cannot list or read other authors' drafts or hidden notes, or publish another author's private notes.
 - No image uploads or photo access routes remain active. Legacy character records and uploaded objects are retained separately, not automatically deleted or reinterpreted as personal notes.
 
-## Connect Supabase Auth
-1. Create or select a Supabase project at https://supabase.com/dashboard.
-2. In the hosted website's runtime environment, set `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, and `ADMIN_EMAIL`. Use a publishable key (or legacy anon key), never a secret/service-role key. `.env.example` documents the names. Do not commit real configuration or keys.
-3. Enable Email authentication and keep email confirmation enabled in Supabase. After configuring custom SMTP, edit the Magic Link email template to display `{{ .Token }}` as a sign-in code. This app uses email OTP for both registration and login.
-4. Set the Site URL to https://deathnote-character-journal.starrygleam257.chatgpt.site and configure delivery. Supabase's built-in email sender is restricted and is not suitable for general public sign-ups; connect a supported SMTP provider or email hook. Check its free-tier limits separately.
-5. Redeploy after changing hosted runtime environment variables. Sign in with the verified email configured in `ADMIN_EMAIL` to receive the admin dashboard.
+## Google sign-in with Supabase
+The website uses Google OAuth through Supabase. Email codes and email templates are no longer used, and SMTP is not needed for this sign-in flow.
 
-No Supabase project has been assumed or created automatically. When project configuration is missing, sign-in fails closed and the website clearly marks setup as pending. Existing ChatGPT login sessions are not accepted as Supabase identities. Old user records are not automatically assigned to new accounts.
+1. In Google Cloud / Google Auth Platform, configure the consent screen and create an OAuth client of type **Web application**.
+2. Add this Authorized JavaScript origin:
+   `https://deathnote-character-journal.starrygleam257.chatgpt.site`
+3. Add this Authorized redirect URI in Google Cloud:
+   `https://ueomjxykgbyjxxpbfhnv.supabase.co/auth/v1/callback`
+4. In Supabase, open Authentication > Sign In / Providers > Google. Enable Google and paste the Google Client ID and Client Secret there. Do not put the Google client secret in this repository or the website's client code.
+5. In Supabase Authentication > URL Configuration, set Site URL to:
+   `https://deathnote-character-journal.starrygleam257.chatgpt.site`
+   Add this allowed redirect URL:
+   `https://deathnote-character-journal.starrygleam257.chatgpt.site/api/auth/callback`
+6. If the Google consent app is still in Testing, add the accounts that need to test it as Google test users, or complete Google's publishing process for general access.
+7. Click **Continue with Google** on the website. Use the verified account matching the server-only `ADMIN_EMAIL` to access admin moderation.
 
-Auth is verified server-side against Supabase `/auth/v1/user`. The admin role comes from the server-only configured email and a confirmed email address, never client-supplied roles or editable user metadata. Sessions use HttpOnly, SameSite cookies; state-changing requests require a matching Origin. No Supabase service-role key is needed.
+Runtime configuration remains `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, and `ADMIN_EMAIL`. Use a publishable key, never a service-role or secret key. Real values are configured in hosting, not committed to GitHub.
 
-Official setup guides:
-- https://supabase.com/docs/guides/auth/auth-email-passwordless
-- https://supabase.com/docs/guides/auth/auth-smtp
+OAuth uses a random PKCE verifier stored in a short-lived HttpOnly cookie and an S256 challenge. The callback exchanges the code on the server, stores session tokens in HttpOnly cookies, clears the verifier, and redirects to a fixed same-origin destination. Tokens are not saved in browser storage or exposed to client JavaScript. The server checks Google provider availability before redirecting and shows a clear setup error if it is disabled.
+
+Admin status is computed from the confirmed email returned by Supabase and the server-only configured admin address. Client roles and editable user metadata cannot grant admin access. Drafts and hidden notes stay private to their author; admin moderation covers published notes only.
+
+Official setup guide: https://supabase.com/docs/guides/auth/social-sign-in/auth-google
 
 ## Development
 Node >=22.13.0. Install with `npm run install:ci`. Generate schema changes with `npm run db:generate`; never modify previously applied migrations. Build with `npm run build`. Apply pending D1 migrations locally, then start `npm run dev`.
@@ -30,4 +39,5 @@ Node >=22.13.0. Install with `npm run install:ci`. Generate schema changes with 
 The text-note data lives in Cloudflare D1. Supabase provides identity only, so private note access is enforced in the server routes rather than through Supabase database RLS.
 
 There is no scheduled delivery or automatic release of notes after death. Hiding a note removes it from this website's public list, but cannot recall copies already made by readers.
+
 
